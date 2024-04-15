@@ -41,6 +41,38 @@ function startPlaying() {
   playTone(frequencyTwo, initialVolume);
 }
 
+// Function to unlock audio context on iOS
+function unlockAudioContext() {
+  if (audioContext.state === "suspended") {
+    var buffer = audioContext.createBuffer(1, 1, 22050);
+    var source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+
+    // Play the empty buffer when the "unlock" button is pressed.
+    if (typeof source.start === "undefined") {
+      source.noteOn(0);
+    } else {
+      source.start(0);
+    }
+
+    // Setup a callback to check if the audio context is unlocked
+    setTimeout(function () {
+      if (audioContext.state === "running") {
+        console.log("Playback unlocked!");
+      }
+    }, 0);
+  }
+}
+
+// Add event listeners to the unlock button
+document
+  .getElementById("unlockButton")
+  .addEventListener("touchstart", unlockAudioContext, false);
+document
+  .getElementById("unlockButton")
+  .addEventListener("click", unlockAudioContext, false);
+
 function playTone(freq, volume) {
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
