@@ -1,109 +1,133 @@
-const audioContext = new AudioContext();
-let oscillators = [];
-let gainNodes = [];
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-// Set up event listeners for both input fields to handle the 'Enter' keypress
-document
-  .getElementById("ratioInput")
-  .addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-      startPlaying();
-    }
-  });
+let oscillators = [null, null]; // Initialize an array for two oscillators
+let gainNodes = [null, null]; // Initialize an array for two gain nodes
 
-document
-  .getElementById("baseFrequencyInput")
-  .addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-      startPlaying();
-    }
-  });
-
-function startPlaying() {
-  stopPlaying(); // Ensure to stop current playing tones
-
-  const ratioInput = document.getElementById("ratioInput").value;
-  const initialVolume = document.getElementById("volumeControl").value;
+// Utility function to update the frequency of the oscillators
+function updateFrequencies() {
+  const numerator = Number(
+    document.getElementById("ratioNumeratorInput").value
+  );
+  const denominator = Number(
+    document.getElementById("ratioDenominatorInput").value
+  );
   const baseFrequency = Number(
     document.getElementById("baseFrequencyInput").value
   );
-  const ratios = ratioInput.split(":").map(Number);
 
-  if (ratios.length !== 2 || isNaN(ratios[0]) || isNaN(ratios[1])) {
-    alert("Please enter a valid ratio, e.g., 3:2");
-    return;
-  }
+  // Check if the values are valid
+  if (!isNaN(numerator) && !isNaN(denominator) && !isNaN(baseFrequency)) {
+    // Calculate the frequencies based on the ratio
+    const frequencyOne = baseFrequency;
+    const frequencyTwo = baseFrequency * (numerator / denominator);
 
-  const frequencyOne = baseFrequency;
-  const frequencyTwo = baseFrequency * (ratios[0] / ratios[1]);
-
-  playTone(frequencyOne, initialVolume);
-  playTone(frequencyTwo, initialVolume);
-}
-
-// Function to unlock audio context on iOS
-function unlockAudioContext() {
-  if (audioContext.state === "suspended") {
-    var buffer = audioContext.createBuffer(1, 1, 22050);
-    var source = audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioContext.destination);
-
-    // Play the empty buffer when the "unlock" button is pressed.
-    if (typeof source.start === "undefined") {
-      source.noteOn(0);
-    } else {
-      source.start(0);
+    // Update frequencies if oscillators are playing
+    if (oscillators[0]) {
+      oscillators[0].frequency.setValueAtTime(
+        frequencyOne,
+        audioContext.currentTime
+      );
     }
-
-    // Setup a callback to check if the audio context is unlocked
-    setTimeout(function () {
-      if (audioContext.state === "running") {
-        console.log("Playback unlocked!");
-      }
-    }, 0);
+    if (oscillators[1]) {
+      oscillators[1].frequency.setValueAtTime(
+        frequencyTwo,
+        audioContext.currentTime
+      );
+    }
   }
 }
 
-// Add event listeners to the unlock button
-document
-  .getElementById("unlockButton")
-  .addEventListener("touchstart", unlockAudioContext, false);
-document
-  .getElementById("unlockButton")
-  .addEventListener("click", unlockAudioContext, false);
-
-function playTone(freq, volume) {
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-
-  oscillator.type = "sine";
-  oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
-  gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
-
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-  oscillator.start();
-  oscillators.push(oscillator);
-  gainNodes.push(gainNode);
-}
-
-function stopPlaying() {
-  oscillators.forEach((osc) => {
-    osc.stop();
-    osc.disconnect();
+// Update the volume for the gain nodes
+function updateVolume() {
+  const volume = document.getElementById("volumeControl").value;
+  // Update gain nodes if they exist
+  gainNodes.forEach((gainNode, index) => {
+    if (gainNode) {
+      gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+      // Update the volume indicator text
+      document.getElementById("volumeValue").textContent = `${Math.round(
+        volume * 100
+      )}%`;
+    }
   });
-  oscillators = [];
-  gainNodes = [];
 }
 
-function updateVolume(volume) {
-  gainNodes.forEach((gainNode) => {
+// Attach the updateVolume function to the volume control
+document
+  .getElementById("volumeControl")
+  .addEventListener("input", updateVolume);
+
+// Play or update the tone based on current input values
+function playOrUpdateTone(index) {
+  const waveType = document.getElementById("waveTypeSelect").value;
+  const volume = document.getElementById("volumeControl").value;
+
+  // If the oscillator does not exist, create it and start playing
+  if (!oscillators[index]) {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.type = waveType;
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
     gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+    oscillator.start();
+
+    oscillators[index] = oscillator;
+    gainNodes[index] = gainNode;
+  }
+
+  // Update the wave type for the existing oscillator
+  oscillators[index].type = waveType;
+}
+
+// Function to start or resume the audio context and play tones
+function startPlaying() {
+  // Resume the audio context if it is suspended
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
+
+  // Play or update tones for both oscillators
+  playOrUpdateTone(0); // For the first oscillator
+  playOrUpdateTone(1); // For the second oscillator
+
+  // Now update the frequencies based on the current input values
+  updateFrequencies();
+}
+
+// Stop playing the tones and disconnect the oscillators
+function stopPlaying() {
+  oscillators.forEach((oscillator, index) => {
+    if (oscillator) {
+      oscillator.stop();
+      oscillator.disconnect();
+      oscillators[index] = null;
+      gainNodes[index].disconnect();
+      gainNodes[index] = null;
+    }
   });
 }
 
+// Event listeners for ratio and frequency inputs to update tones
+document
+  .getElementById("ratioNumeratorInput")
+  .addEventListener("input", updateFrequencies);
+document
+  .getElementById("ratioDenominatorInput")
+  .addEventListener("input", updateFrequencies);
+document
+  .getElementById("baseFrequencyInput")
+  .addEventListener("input", updateFrequencies);
+document.getElementById("waveTypeSelect").addEventListener("change", () => {
+  playOrUpdateTone(0); // Update the wave type for the first oscillator
+  playOrUpdateTone(1); // Update the wave type for the second oscillator
+  updateFrequencies(); // Then update the frequencies
+});
+
+// Function to initialize the app on DOM content loaded
 document.addEventListener("DOMContentLoaded", () => {
+  // Check if the Web Audio API is supported
   if (!audioContext) {
     alert("Web Audio API is not supported in this browser");
   }

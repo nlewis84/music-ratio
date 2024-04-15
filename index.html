@@ -33,6 +33,15 @@
         margin-top: 5px;
         color: #666;
       }
+      input.ratioNumeratorInput {
+        width: 45%;
+      }
+      input {
+        font-size: large;
+      }
+      select {
+        font-size: large;
+      }
       button {
         padding: 10px;
         font-size: 16px;
@@ -62,33 +71,30 @@
           box-sizing: border-box;
         }
       }
-      #unlockButton {
-        display: none;
-        padding: 10px;
-        margin-top: 10px;
-        background: #4caf50; /* Green */
-        color: white;
-        border: none;
-        border-radius: 5px;
-        font-size: 16px;
-        cursor: pointer;
-      }
-
-      /* Using a media query to show the unlock button on small screens */
-      @media screen and (max-width: 600px) {
-        #unlockButton {
-          display: block; /* Show unlock button on small screens */
-        }
-      }
     </style>
     <title>Music Interval Player</title>
   </head>
   <body>
     <div class="container">
       <h1>Music Interval Player</h1>
-      <button id="unlockButton">Unlock Audio</button>
-      <label for="ratioInput">Interval Ratio (e.g., 3:2)</label>
-      <input type="text" id="ratioInput" placeholder="Enter Ratio" />
+      <label for="ratioNumeratorInput">Interval Ratio (e.g., 3:2)</label>
+      <div style="display: flex; gap: 5px">
+        <input
+          type="number"
+          id="ratioNumeratorInput"
+          placeholder="Numerator"
+          style="flex: 1"
+          value="3"
+        />
+        <span>:</span>
+        <input
+          type="number"
+          id="ratioDenominatorInput"
+          placeholder="Denominator"
+          style="flex: 1"
+          value="2"
+        />
+      </div>
       <label for="baseFrequencyInput">Base Frequency (Hz)</label>
       <input
         type="number"
